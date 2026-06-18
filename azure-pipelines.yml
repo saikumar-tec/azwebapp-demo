@@ -24,6 +24,7 @@ stages:
         versionSpec: $(nodeVersion)
 
     - script: |
+        npm ci
         npm install
         npm run build
       displayName: Build NextJS
