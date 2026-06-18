@@ -1,0 +1,70 @@
+trigger:
+- main
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+
+##################################
+# Build
+##################################
+- stage: Build
+
+  jobs:
+  - job: Build
+
+    pool:
+      vmImage: ubuntu-latest
+
+    steps:
+
+    - task: NodeTool@0
+      inputs:
+        versionSpec: $(nodeVersion)
+
+    - script: |
+        npm install
+        npm run build
+      displayName: Build NextJS
+
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: .
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: $(Build.ArtifactStagingDirectory)/app.zip
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: $(Build.ArtifactStagingDirectory)
+        ArtifactName: drop
+
+##################################
+# Deploy
+##################################
+- stage: Deploy
+
+  dependsOn: Build
+
+  jobs:
+
+  - deployment: DeployWebApp
+
+    environment: Production
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - download: current
+            artifact: drop
+
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'web-app'
+              appType: 'webAppLinux'
+              appName: 'my-test-webapp'
+              package: '$(Pipeline.Workspace)/drop/app.zip'
+              runtimeStack: 'NODE|20-lts'
