@@ -1,71 +1,50 @@
 trigger:
 - main
 
+pool:
+  vmImage: ubuntu-latest
+
 variables:
-  nodeVersion: '20.x'
+  nodeVersion: '22.x'
 
-stages:
+steps:
 
-##################################
-# Build
-##################################
-- stage: Build
+# Install Node
+- task: NodeTool@0
+  inputs:
+    versionSpec: $(nodeVersion)
+  displayName: 'Install Node.js'
 
-  jobs:
-  - job: Build
+# Install dependencies and build
+- script: |
+    npm ci
+    npm run build
+  displayName: 'Install dependencies and Build'
 
-    pool:
-      vmImage: ubuntu-latest
+# Remove node_modules before creating zip
+- script: |
+    rm -rf node_modules
+  displayName: 'Remove node_modules'
 
-    steps:
+# Archive application
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.SourcesDirectory)'
+    includeRootFolder: false
+    archiveType: zip
+    archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+    replaceExistingArchive: true
 
-    - task: NodeTool@0
-      inputs:
-        versionSpec: $(nodeVersion)
+# Publish artifact
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/app.zip'
+    ArtifactName: drop
 
-    - script: |
-        npm ci
-        npm install
-        npm run build
-      displayName: Build NextJS
-
-    - task: ArchiveFiles@2
-      inputs:
-        rootFolderOrFile: .
-        includeRootFolder: false
-        archiveType: zip
-        archiveFile: $(Build.ArtifactStagingDirectory)/app.zip
-
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: $(Build.ArtifactStagingDirectory)
-        ArtifactName: drop
-
-##################################
-# Deploy
-##################################
-- stage: Deploy
-
-  dependsOn: Build
-
-  jobs:
-
-  - deployment: DeployWebApp
-
-    environment: Production
-
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-
-          - download: current
-            artifact: drop
-
-          - task: AzureWebApp@1
-            inputs:
-              azureSubscription: 'simple-app'
-              appType: 'webAppLinux'
-              appName: 'simple-app'
-              package: '$(Pipeline.Workspace)/drop/app.zip'
-              runtimeStack: 'NODE|22-lts'
+# Deploy to Azure Web App
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'simple-app'
+    appType: 'webAppLinux'
+    appName: 'simple-app'
+    package: '$(Build.ArtifactStagingDirectory)/app.zip'
