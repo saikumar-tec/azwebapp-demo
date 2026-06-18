@@ -65,6 +65,6 @@ stages:
             inputs:
               azureSubscription: 'simple-app'
               appType: 'webAppLinux'
-              appName: 'my-test-webapp'
+              appName: 'simple-app'
               package: '$(Pipeline.Workspace)/drop/app.zip'
               runtimeStack: 'NODE|22-lts'
