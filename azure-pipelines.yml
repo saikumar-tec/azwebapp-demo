@@ -63,8 +63,8 @@ stages:
 
           - task: AzureWebApp@1
             inputs:
-              azureSubscription: 'web-app'
+              azureSubscription: 'simple-app'
               appType: 'webAppLinux'
               appName: 'my-test-webapp'
               package: '$(Pipeline.Workspace)/drop/app.zip'
-              runtimeStack: 'NODE|20-lts'
+              runtimeStack: 'NODE|22-lts'
