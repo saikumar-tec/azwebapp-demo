@@ -1,0 +1,50 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  nodeVersion: '22.x'
+
+steps:
+
+# Install Node
+- task: NodeTool@0
+  inputs:
+    versionSpec: $(nodeVersion)
+  displayName: 'Install Node.js'
+
+# Install dependencies and build
+- script: |
+    npm ci
+    npm run build
+  displayName: 'Install dependencies and Build'
+
+# Remove node_modules before creating zip
+- script: |
+    rm -rf node_modules
+  displayName: 'Remove node_modules'
+
+# Archive application
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.SourcesDirectory)'
+    includeRootFolder: false
+    archiveType: zip
+    archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+    replaceExistingArchive: true
+
+# Publish artifact
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/app.zip'
+    ArtifactName: drop
+
+# Deploy to Azure Web App
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'simple-app'
+    appType: 'webAppLinux'
+    appName: 'simple-app'
+    package: '$(Build.ArtifactStagingDirectory)/app.zip'
